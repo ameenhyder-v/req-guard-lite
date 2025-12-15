@@ -77,3 +77,12 @@ app.set('trust proxy', 1); // Trust the first proxy
 
 MIT © ameen_hyder
 
+## Future Updates Roadmap
+
+I am constantly working to improve `req-guard-lite`. Here is what you can expect in upcoming versions:
+
+- **v0.2.0:** 📡 **Redis Support:** For distributed systems and scaling across multiple servers.
+- **v0.3.0:** 🔑 **Custom Key Generators:** Rate limit by User ID, API Key, or any custom logic instead of just IP.
+- **v0.4.0:** 📨 **Response Headers:** Standard headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) to keep clients informed.
+- **v0.5.0:** 🪝 **Better Error Hooks:** Custom callback functions when a limit is reached (e.g., logging to an external service).
+
