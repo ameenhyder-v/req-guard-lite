@@ -13,9 +13,21 @@ I built `req-guard-lite` because I wanted a simple way to protect API endpoints 
 
 ## Installation
 
+`express` is a **peer dependency** — install it alongside this package:
+
 ```bash
 npm install req-guard-lite express
 ```
+
+## Dependencies
+
+| Kind | Package | Why |
+|------|---------|-----|
+| Peer | `express` (^4.18 or ^5) | You provide Express; this library is middleware only |
+| Runtime | none | Zero bundled runtime dependencies |
+| Dev only | `express`, `typescript`, `@types/*` | Used for building and testing this repo |
+
+Dependency scanners may show `express` as "missing" when analyzing `req-guard-lite` in isolation. That is expected — consumers install Express in their own app.
 
 ## How to use
 

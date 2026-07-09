@@ -24,6 +24,25 @@ jobs:
       - run: npm ci
       - run: npm test
 
+      - name: Verify publish contents
+        run: |
+          npm pack --dry-run 2>&1 | tee pack-output.txt
+          if grep -E 'package/.*\.tgz' pack-output.txt; then
+            echo 'Error: nested tarball must not be included in package contents'
+            exit 1
+          fi
+          grep -q 'dist/index.js' pack-output.txt
+          grep -q 'LICENSE' pack-output.txt
+
+      - name: Check version is not already published
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "req-guard-lite@${VERSION}" version 2>/dev/null; then
+            echo "Version ${VERSION} is already on npm. Bump package.json before merging to production."
+            exit 1
+          fi
+          echo "Ready to publish version ${VERSION}"
+
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         env:

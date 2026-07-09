@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, production]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, production]
 
 jobs:
   test:
@@ -28,9 +28,10 @@ jobs:
       - name: Verify publish contents
         run: |
           npm pack --dry-run 2>&1 | tee pack-output.txt
-          if grep -q '\.tgz'; then
-            echo 'Error: tarball must not be included in package contents'
+          if grep -E 'package/.*\.tgz' pack-output.txt; then
+            echo 'Error: nested tarball must not be included in package contents'
             exit 1
           fi
           grep -q 'dist/index.js' pack-output.txt
           grep -q 'LICENSE' pack-output.txt
+          ! grep -qE 'package/(src|test)/' pack-output.txt
