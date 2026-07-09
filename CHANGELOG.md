@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-09
+
+### Added
+
+- `RateLimitStore` interface for pluggable storage backends
+- `MemoryStore` as the default in-memory store with periodic cleanup of expired entries
+- `createRedisStore` via `req-guard-lite/redis` subpath for distributed rate limiting with ioredis
+- `keyGenerator` option to rate limit by API key, user ID, or any custom logic
+- `ipKeyGenerator` default export for IP-based rate limiting
+- Tests for MemoryStore, keyGenerator, and Redis store
+
+### Changed
+
+- Middleware is now async-compatible (backward compatible with Express)
+- `ioredis` added as an optional peer dependency
+
 ## [0.1.2] - 2026-07-09
 
 ### Changed
@@ -52,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release with in-memory IP-based rate limiting middleware for Express
 
+[0.2.0]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ameenhyder-v/req-guard-lite/releases/tag/v0.1.0

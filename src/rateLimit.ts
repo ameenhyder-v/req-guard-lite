@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
+import { ipKeyGenerator } from './keyGenerator';
+import { MemoryStore } from './stores/memory';
 import type { RateLimitOptions } from './types';
 
 export const rateLimit = (options: RateLimitOptions) => {
@@ -6,35 +8,23 @@ export const rateLimit = (options: RateLimitOptions) => {
         windowMs = 60_000,
         max,
         message = 'Too many requests, please try again later.',
-        statusCode = 429
+        statusCode = 429,
+        keyGenerator = ipKeyGenerator,
+        store = new MemoryStore({ windowMs, max })
     } = options;
 
-    // closure based in memory storing request counts
-    const requestCounts = new Map<string, {count: number, startTime: number}>();
+    return async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const key = keyGenerator(req);
+            const result = await Promise.resolve(store.consume(key));
 
-    return (req: Request, res: Response, next: NextFunction) => {
-        const key = req.ip || req.socket.remoteAddress || "unknown";
-        const now = Date.now();
+            if (!result.allowed) {
+                return res.status(statusCode).json({ message });
+            }
 
-        const record = requestCounts.get(key);
-
-        if (record && now - record.startTime > windowMs) {
-            requestCounts.delete(key);
+            next();
+        } catch (err) {
+            next(err);
         }
-
-        // Create new record if none exists
-        if (!requestCounts.has(key)) {
-            requestCounts.set(key, {count: 1, startTime: now});
-            return next();  
-        }
-
-        const current = requestCounts.get(key)!;
-        
-        if (current.count >= max) {
-            return res.status(statusCode).json({ message });
-        }
-
-        current.count++;
-        next();
     };
 };

@@ -1,13 +1,17 @@
 {
   "name": "req-guard-lite",
-  "version": "0.1.2",
-  "description": "A lightweight in-memory rate limiter middleware for Express.js",
+  "version": "0.2.0",
+  "description": "A lightweight rate limiter middleware for Express.js with pluggable stores",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./redis": {
+      "types": "./dist/redis/index.d.ts",
+      "default": "./dist/redis/index.js"
     }
   },
   "sideEffects": false,
@@ -47,17 +51,23 @@
     "node": ">=18"
   },
   "peerDependencies": {
-    "express": "^4.18.0 || ^5.0.0"
+    "express": "^4.18.0 || ^5.0.0",
+    "ioredis": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "express": {
       "optional": false
+    },
+    "ioredis": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.5",
     "express": "^5.0.0",
+    "ioredis": "^5.6.1",
+    "ioredis-mock": "^8.9.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
