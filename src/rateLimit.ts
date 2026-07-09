@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { RateLimitOptions } from './types';
+import type { Request, Response, NextFunction } from 'express';
+import type { RateLimitOptions } from './types';
 
 export const rateLimit = (options: RateLimitOptions) => {
     const {

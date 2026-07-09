@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Verify publish contents
+        run: |
+          npm pack --dry-run 2>&1 | tee pack-output.txt
+          if grep -q '\.tgz'; then
+            echo 'Error: tarball must not be included in package contents'
+            exit 1
+          fi
+          grep -q 'dist/index.js' pack-output.txt
+          grep -q 'LICENSE' pack-output.txt
