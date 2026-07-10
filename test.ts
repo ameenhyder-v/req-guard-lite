@@ -5,7 +5,6 @@ import { rateLimit } from './dist/index';
 const app = express();
 const port = 3000;
 
-// Apply rate limiter: 3 requests per 1 minute
 const limiter = rateLimit({
     windowMs: 60 * 1000, 
     max: 3,
@@ -13,7 +12,6 @@ const limiter = rateLimit({
     statusCode: 429
 });
 
-// Apply to all requests
 app.use(limiter);
 
 app.get('/', (req: Request, res: Response) => {
@@ -34,11 +32,10 @@ const server = app.listen(port, async () => {
         }
     };
 
-    // Make 5 requests (Limit is 3)
     for (let i = 1; i <= 5; i++) {
         await makeRequest(i);
     }
 
     console.log('--- Test Complete ---');
-    server.close(); // Stop server
+    server.close();
 });
