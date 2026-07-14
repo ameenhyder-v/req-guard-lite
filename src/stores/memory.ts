@@ -1,8 +1,6 @@
-import type { ConsumeResult, RateLimitStore } from './types';
+import type { ConsumeResult, RateLimitStore, StoreInitOptions } from './types';
 
 type MemoryStoreOptions = {
-    windowMs: number;
-    max: number;
     cleanupIntervalMs?: number;
 };
 
@@ -12,18 +10,29 @@ type Record = {
 };
 
 export class MemoryStore implements RateLimitStore {
-    private readonly windowMs: number;
-    private readonly max: number;
+    private windowMs = 0;
+    private max = 0;
+    private initialized = false;
     private readonly records = new Map<string, Record>();
     private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+    private readonly cleanupIntervalMs: number;
 
-    constructor(options: MemoryStoreOptions) {
+    constructor(options: MemoryStoreOptions = {}) {
+        this.cleanupIntervalMs = options.cleanupIntervalMs ?? 60_000;
+    }
+
+    init(options: StoreInitOptions): void {
         this.windowMs = options.windowMs;
         this.max = options.max;
+        this.initialized = true;
 
-        const cleanupIntervalMs = options.cleanupIntervalMs ?? 60_000;
-        if (cleanupIntervalMs > 0) {
-            this.cleanupTimer = setInterval(() => this.sweep(), cleanupIntervalMs);
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+            this.cleanupTimer = null;
+        }
+
+        if (this.cleanupIntervalMs > 0) {
+            this.cleanupTimer = setInterval(() => this.sweep(), this.cleanupIntervalMs);
             if (this.cleanupTimer.unref) {
                 this.cleanupTimer.unref();
             }
@@ -31,6 +40,10 @@ export class MemoryStore implements RateLimitStore {
     }
 
     consume(key: string): ConsumeResult {
+        if (!this.initialized) {
+            throw new Error('MemoryStore must be initialized via init() before consume()');
+        }
+
         const now = Date.now();
         const record = this.records.get(key);
 
@@ -65,6 +78,10 @@ export class MemoryStore implements RateLimitStore {
     }
 
     private sweep(): void {
+        if (!this.initialized) {
+            return;
+        }
+
         const now = Date.now();
         for (const [key, record] of this.records) {
             if (now - record.startTime > this.windowMs) {
