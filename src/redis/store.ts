@@ -1,5 +1,5 @@
 import type { Redis } from 'ioredis';
-import type { ConsumeResult, RateLimitStore } from '../stores/types';
+import type { ConsumeResult, RateLimitStore, StoreInitOptions } from '../stores/types';
 
 const CONSUME_SCRIPT = `
 local key = KEYS[1]
@@ -28,19 +28,30 @@ return {1, newCount, ttl}
 `;
 
 export type RedisStoreOptions = {
-    windowMs: number;
-    max: number;
     prefix?: string;
 };
 
 export const createRedisStore = (
     client: Redis,
-    options: RedisStoreOptions
+    options: RedisStoreOptions = {}
 ): RateLimitStore => {
-    const { windowMs, max, prefix = 'req-guard:' } = options;
+    const { prefix = 'req-guard:' } = options;
+    let windowMs = 0;
+    let max = 0;
+    let initialized = false;
 
     return {
+        init(initOptions: StoreInitOptions): void {
+            windowMs = initOptions.windowMs;
+            max = initOptions.max;
+            initialized = true;
+        },
+
         async consume(key: string): Promise<ConsumeResult> {
+            if (!initialized) {
+                throw new Error('RedisStore must be initialized via init() before consume()');
+            }
+
             const redisKey = `${prefix}${key}`;
             const now = Date.now();
             const result = (await client.eval(

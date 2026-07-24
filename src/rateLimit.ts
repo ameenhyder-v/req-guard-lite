@@ -10,8 +10,10 @@ export const rateLimit = (options: RateLimitOptions) => {
         message = 'Too many requests, please try again later.',
         statusCode = 429,
         keyGenerator = ipKeyGenerator,
-        store = new MemoryStore({ windowMs, max })
+        store = new MemoryStore()
     } = options;
+
+    store.init?.({ windowMs, max });
 
     return async (req: Request, res: Response, next: NextFunction) => {
         try {

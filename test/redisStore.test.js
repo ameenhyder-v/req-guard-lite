@@ -6,11 +6,8 @@ const { createRedisStore } = require('../dist/redis');
 describe('createRedisStore', () => {
     it('allows requests under the limit', async () => {
         const client = new Redis();
-        const store = createRedisStore(client, {
-            windowMs: 60_000,
-            max: 3,
-            prefix: 'test-allow:'
-        });
+        const store = createRedisStore(client, { prefix: 'test-allow:' });
+        store.init({ windowMs: 60_000, max: 3 });
 
         const first = await store.consume('user-a');
         assert.equal(first.allowed, true);
@@ -19,11 +16,8 @@ describe('createRedisStore', () => {
 
     it('blocks requests that exceed the limit without incrementing', async () => {
         const client = new Redis();
-        const store = createRedisStore(client, {
-            windowMs: 60_000,
-            max: 2,
-            prefix: 'test-block:'
-        });
+        const store = createRedisStore(client, { prefix: 'test-block:' });
+        store.init({ windowMs: 60_000, max: 2 });
 
         assert.equal((await store.consume('user-a')).allowed, true);
         assert.equal((await store.consume('user-a')).allowed, true);
@@ -39,9 +33,10 @@ describe('createRedisStore', () => {
 
     it('shares state across store instances using the same client', async () => {
         const client = new Redis();
-        const options = { windowMs: 60_000, max: 2, prefix: 'test-shared:' };
-        const storeA = createRedisStore(client, options);
-        const storeB = createRedisStore(client, options);
+        const storeA = createRedisStore(client, { prefix: 'test-shared:' });
+        const storeB = createRedisStore(client, { prefix: 'test-shared:' });
+        storeA.init({ windowMs: 60_000, max: 2 });
+        storeB.init({ windowMs: 60_000, max: 2 });
 
         assert.equal((await storeA.consume('shared-key')).allowed, true);
         assert.equal((await storeB.consume('shared-key')).allowed, true);
@@ -51,11 +46,8 @@ describe('createRedisStore', () => {
 
     it('resets the count after the window expires', async () => {
         const client = new Redis();
-        const store = createRedisStore(client, {
-            windowMs: 50,
-            max: 1,
-            prefix: 'test-reset:'
-        });
+        const store = createRedisStore(client, { prefix: 'test-reset:' });
+        store.init({ windowMs: 50, max: 1 });
 
         assert.equal((await store.consume('user-a')).allowed, true);
         assert.equal((await store.consume('user-a')).allowed, false);
@@ -64,5 +56,11 @@ describe('createRedisStore', () => {
 
         assert.equal((await store.consume('user-a')).allowed, true);
         assert.equal((await store.consume('user-a')).totalHits, 1);
+    });
+
+    it('throws if consume is called before init', async () => {
+        const client = new Redis();
+        const store = createRedisStore(client);
+        await assert.rejects(() => store.consume('user-a'), /must be initialized/);
     });
 });

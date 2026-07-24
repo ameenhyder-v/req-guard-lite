@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-14
+
+### Changed
+
+- `rateLimit` is now the single source of truth for `max` and `windowMs`; stores receive them via `init({ windowMs, max })`
+- `createRedisStore(client, options?)` only accepts optional `{ prefix }` — no longer takes `max` / `windowMs`
+- `MemoryStore` constructor only accepts optional `{ cleanupIntervalMs }` — limits come from `init`
+
+### Added
+
+- `StoreInitOptions` type and optional `RateLimitStore.init` for custom stores
+
+### Breaking
+
+- Anyone who passed `max` / `windowMs` into `createRedisStore` or `new MemoryStore(...)` must move those options to `rateLimit({ max, windowMs })` instead. Default `rateLimit({ max })` usage is unchanged.
+
 ## [0.2.0] - 2026-07-09
 
 ### Added
@@ -68,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release with in-memory IP-based rate limiting middleware for Express
 
+[0.2.1]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ameenhyder-v/req-guard-lite/compare/v0.1.0...v0.1.1

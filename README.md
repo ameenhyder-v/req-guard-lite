@@ -115,25 +115,125 @@ import { createRedisStore } from 'req-guard-lite/redis';
 const app = express();
 const redis = new Redis();
 
-const windowMs = 15 * 60 * 1000;
-
 const limiter = rateLimit({
     max: 100,
-    windowMs,
-    store: createRedisStore(redis, { windowMs, max: 100 })
+    windowMs: 15 * 60 * 1000,
+    store: createRedisStore(redis)
 });
 
 app.use(limiter);
 ```
 
-### Custom Store
+### Postgres (custom store)
 
-Implement the `RateLimitStore` interface to use any backend (Memcached, DynamoDB, Postgres, etc.):
+There is no built-in Postgres adapter — you connect with your own client (e.g. `pg`) and implement `RateLimitStore`. Limits still come only from `rateLimit`; your store receives them via `init`.
+
+```bash
+npm install req-guard-lite express pg
+npm install -D @types/pg
+```
 
 ```typescript
-import type { RateLimitStore, ConsumeResult } from 'req-guard-lite';
+import { Pool } from 'pg';
+import { rateLimit } from 'req-guard-lite';
+import type { RateLimitStore, ConsumeResult, StoreInitOptions } from 'req-guard-lite';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+class PostgresStore implements RateLimitStore {
+    private windowMs = 0;
+    private max = 0;
+
+    init(options: StoreInitOptions): void {
+        this.windowMs = options.windowMs;
+        this.max = options.max;
+    }
+
+    async consume(key: string): Promise<ConsumeResult> {
+        const now = Date.now();
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const { rows } = await client.query(
+                `SELECT count, start_time FROM rate_limits WHERE key = $1 FOR UPDATE`,
+                [key]
+            );
+
+            let count = 0;
+            let startTime = now;
+
+            if (rows.length > 0 && now - Number(rows[0].start_time) <= this.windowMs) {
+                count = Number(rows[0].count);
+                startTime = Number(rows[0].start_time);
+            }
+
+            if (count >= this.max) {
+                await client.query('COMMIT');
+                return {
+                    allowed: false,
+                    totalHits: count,
+                    resetTime: startTime + this.windowMs
+                };
+            }
+
+            count += 1;
+            await client.query(
+                `INSERT INTO rate_limits (key, count, start_time)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (key) DO UPDATE SET count = $2, start_time = $3`,
+                [key, count, startTime]
+            );
+            await client.query('COMMIT');
+
+            return {
+                allowed: true,
+                totalHits: count,
+                resetTime: startTime + this.windowMs
+            };
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+}
+
+const limiter = rateLimit({
+    max: 100,
+    windowMs: 15 * 60 * 1000,
+    store: new PostgresStore()
+});
+```
+
+Example table:
+
+```sql
+CREATE TABLE rate_limits (
+    key TEXT PRIMARY KEY,
+    count INTEGER NOT NULL,
+    start_time BIGINT NOT NULL
+);
+```
+
+### Custom Store
+
+Implement the `RateLimitStore` interface to use any backend (Memcached, DynamoDB, MongoDB, etc.). Implement `init` if your store needs `max` / `windowMs` from `rateLimit`:
+
+```typescript
+import type { RateLimitStore, ConsumeResult, StoreInitOptions } from 'req-guard-lite';
 
 class MyStore implements RateLimitStore {
+    private windowMs = 0;
+    private max = 0;
+
+    init(options: StoreInitOptions): void {
+        this.windowMs = options.windowMs;
+        this.max = options.max;
+    }
+
     consume(_key: string): ConsumeResult | Promise<ConsumeResult> {
         throw new Error('Not implemented');
     }
@@ -165,7 +265,7 @@ app.set('trust proxy', 1);
 
 **Redis store:** Shares state across multiple server instances using atomic Lua scripts.
 
-**Custom store:** Bring your own backend by implementing `RateLimitStore`.
+**Custom store:** Bring your own backend (Postgres, MongoDB, DynamoDB, etc.) by implementing `RateLimitStore`. Limits still come only from `rateLimit` via `init`.
 
 ## Security
 
